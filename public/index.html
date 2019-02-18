@@ -2,9 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script type="text/javascript" src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
     <title>Hello Webpack</title>
+    <style>
+    @font-face {
+    font-family: 'Berthold_Grotesk_EB';
+    src: url(assets/fonts/Berthold_Akzidenz_Grotesk_Extra_Bold.otf);
+    }
+    @font-face {
+        font-family: 'Franklin_Gothic_Demi_Cond';
+        src: url(assets/fonts/Franklin_Gothic_Demi_Cond_Regular.ttf);
+    }
+    </style>
 </head>
 <body>
     <script src="bundle.js"></script>
+    <script>
+        cast.framework.CastReceiverContext.getInstance().start();
+    </script>
 </body>
 </html>
