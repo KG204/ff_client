@@ -45,6 +45,18 @@ let bar_7_points;
 let bar_8_answer;
 let bar_8_points;
 
+let Current_Points_Update = true;
+let Current_Points = 0;
+let CurrentScoreboard;
+
+let left_team_points_update = true;
+let left_team_points = 0;
+let LeftTeamScoreboard;
+
+let right_team_points_update = true;
+let right_team_points = 0;
+let RightTeamScoreboard;
+
 let bar_1_reset;
 let bar_2_reset;
 let bar_3_reset;
@@ -64,7 +76,21 @@ let tween6Flip;
 let tween7Flip;
 let tween8Flip;
 
+let Xactive = false;
+let XactiveCount = 0;
+let XXactive = false;
+let XXXactive = false;
+
 let texturesManager;
+
+let Board_Width = 1200;
+let Board_Height = 600;
+
+//let Board_Width = 1920;
+//let Board_Height = 1080;
+
+//let Board_Height = $(document).height();
+//let Board_Width = $(document).width();
 
 
 export default class Application {
@@ -80,14 +106,17 @@ export default class Application {
 
         this.config = {
             type: Phaser.AUTO,
-            width: 800,
-            height: 600,
+            width: Board_Width,
+            height: Board_Height,
             scene: {
                 preload: this.preload,
                 create: this.create,
                 update: this.update
             }
         };
+
+        console.log(Board_Height);
+        console.log(Board_Width);
 
         //this.client;
         //this.client = new Colyseus.Client(server_uri);
@@ -314,27 +343,56 @@ export default class Application {
                             break;
                     }
                     break;
-            }
-            /*
-            if (change.path["id"] === "Answer1") {
-                if (change.path["attribute"] === "ans") {
-                    if (change.value !== "") {
-                        bar_1_activeAnswer = true;
+                case "LeftTeam":
+                    switch(change.path["attribute"]) {
+                        case "total":
+                            left_team_points_update = true;
+                            left_team_points = change.value;
+                            break;
                     }
-                }
-                else if (change.path["attribute"] === "revealed") {
-                    if (change.value === true) {
-                        bar_1_revealAnswer = true;
+                    break;
+                case "RightTeam":
+                    switch(change.path["attribute"]) {
+                        case "total":
+                            right_team_points_update = true;
+                            right_team_points = change.value;
+                            break;
                     }
-                }
+                    break;
+                case "CurrentTotal":
+                    switch(change.path["attribute"]) {
+                        case "value":
+                            Current_Points_Update = true;
+                            Current_Points = change.value;
+                            break;
+                    }
+                    break;
             }
-            */
+        });
+
+        room.onMessage.add(function(message) {
+            if (message === "X") {
+                Xactive = true;
+                XactiveCount = 1;
+            }
+            if (message === "XX") {
+                Xactive = true;
+                XactiveCount = 2;
+            }
+            if (message === "XXX") {
+                Xactive = true;
+                XactiveCount = 3;
+            }
         });
     }
 
     preload ()
     {
         this.load.image('sky', 'assets/sky.png');
+        this.load.image('background', 'assets/background.png');
+        this.load.image('background_bar', 'assets/background_bar.png');
+        this.load.image('X', 'assets/X_1.png');
+        this.load.image('tv_bar', 'assets/tv_bar.png');
         //this.load.multiatlas('bar1', 'assets/bar1.json', 'assets');
         this.load.multiatlas('bar', 'assets/bar.json', 'assets');
 
@@ -342,20 +400,46 @@ export default class Application {
         this.load.audio('rightAnswerSound', 'assets/sounds/RightAnswer.mp3');
         this.load.audio('numberOneAnswer', 'assets/sounds/NumberOneAnswer.mp3');
         this.load.audio('newQuestion', 'assets/sounds/NewQuestion.mp3');
+        this.load.audio('wrongAnswer', 'assets/sounds/WrongAnswer_Short.mp3');
     }
     //this.bar_1;
 
     create ()
     {
-        this.add.image(400, 300, 'sky');
-        bar_1 = this.add.sprite(184,47, 'bar', 'Number_blank.png');
-        bar_2 = this.add.sprite(184,147, 'bar', 'Number_blank.png');
-        bar_3 = this.add.sprite(184,247, 'bar', 'Number_blank.png');
-        bar_4 = this.add.sprite(184,347, 'bar', 'Number_blank.png');
-        bar_5 = this.add.sprite(554,47, 'bar', 'Number_blank.png');
-        bar_6 = this.add.sprite(554,147, 'bar', 'Number_blank.png');
-        bar_7 = this.add.sprite(554,247, 'bar', 'Number_blank.png');
-        bar_8 = this.add.sprite(554,347, 'bar', 'Number_blank.png');
+        //gameBoard is 1200 x 600
+        //Left side has 300
+        //Right Side has 300
+        //Original image was 800
+        //So need a width of 1400
+        //this.add.image(400, 300, 'sky');
+        this.add.image(600,300, 'background');
+        this.add.image(600,347, 'background_bar');
+        //Bar position adjustment
+        //Current origin point is 0,0
+        //To give some spacing, using 30 from left, and 100 from top
+        let bar_startX = 200;
+        let bar_startY = 0;
+        let topLeftX = bar_startX + 30;
+        let topLeftY = bar_startY + 150;
+
+        bar_1 = this.add.sprite(topLeftX + 184,topLeftY + 47, 'bar', 'Number_blank.png');
+        bar_2 = this.add.sprite(topLeftX + 184,topLeftY + 147, 'bar', 'Number_blank.png');
+        bar_3 = this.add.sprite(topLeftX + 184,topLeftY + 247, 'bar', 'Number_blank.png');
+        bar_4 = this.add.sprite(topLeftX + 184,topLeftY + 347, 'bar', 'Number_blank.png');
+        bar_5 = this.add.sprite(topLeftX + 554,topLeftY + 47, 'bar', 'Number_blank.png');
+        bar_6 = this.add.sprite(topLeftX + 554,topLeftY + 147, 'bar', 'Number_blank.png');
+        bar_7 = this.add.sprite(topLeftX + 554,topLeftY + 247, 'bar', 'Number_blank.png');
+        bar_8 = this.add.sprite(topLeftX + 554,topLeftY + 347, 'bar', 'Number_blank.png');
+
+        CurrentScoreboard = this.add.sprite(600, 80, 'tv_bar');
+        CurrentScoreboard.scaleX = 0.8;
+        CurrentScoreboard.scaleY = 0.8;
+        LeftTeamScoreboard = this.add.sprite(100, 300, 'tv_bar');
+        LeftTeamScoreboard.scaleX = 0.8;
+        LeftTeamScoreboard.scaleY = 0.8;
+        RightTeamScoreboard = this.add.sprite(1100, 300, 'tv_bar');
+        RightTeamScoreboard.scaleX = 0.8;
+        RightTeamScoreboard.scaleY = 0.8;
 
         this.sound.add('rightAnswerSound');
         this.sound.add('numberOneAnswer');
@@ -379,119 +463,6 @@ export default class Application {
             frames: frameNames,
             frameRate: 60,
             repeat: 0
-        });
-        */
-
-        /*
-        let texture = this.textures.createCanvas('gradient', 368, 95);
-        texture.context.fillStyle = "#000000";
-        texture.context.fillRect(0,0,368, 95);
-        texture.context.fillStyle = "#0000ff";
-        texture.context.fillRect(300, 0, 68, 95);
-        texture.context.font = "30px Arial";
-        texture.context.fillStyle = "#ffffff";
-        texture.context.fillText("Hello World", 50, 50);
-        texture.context.fillText("50", 305, 50);
-
-        texture.refresh();
-        */
-
-        //this.add.image(300, 300, 'gradient');
-        /*
-        tween1Flip = this.tweens.create({
-            targets: bar_1,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_1.setTexture('bar','Number1.png');
-            }
-        });
-
-        tween2Flip = this.tweens.create({
-            targets: bar_2,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_2.setTexture('bar','Number2.png');
-            }
-        });
-
-        tween3Flip = this.tweens.create({
-            targets: bar_3,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_3.setTexture('bar','Number3.png');
-            }
-        });
-
-        tween4Flip = this.tweens.create({
-            targets: bar_4,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_4.setTexture('bar','Number4.png');
-            }
-        });
-
-        tween5Flip = this.tweens.create({
-            targets: bar_5,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_5.setTexture('bar','Number5.png');
-            }
-        });
-
-        tween6Flip = this.tweens.create({
-            targets: bar_6,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_6.setTexture('bar','Number6.png');
-            }
-        });
-
-        tween7Flip = this.tweens.create({
-            targets: bar_7,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_7.setTexture('bar','Number7.png');
-            }
-        });
-
-        tween8Flip = this.tweens.create({
-            targets: bar_8,
-            scaleY: 0,
-            duration: 100,
-            ease: 'Linear',
-            yoyo: true,
-            delay: 2000,
-            onYoyo: function(tween, target) {
-                bar_8.setTexture('bar','Number8.png');
-            }
         });
         */
         texturesManager = this.textures;
@@ -654,48 +625,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient1Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            //grd.addColorStop(0, "#4c83f7");
-            //grd.addColorStop(0.7, "#4c83f7");
-            //grd.addColorStop(1, "#1c3ca3");
-            grd.addColorStop(0, "#103D9C");
-            grd.addColorStop(0.5, "#1B5CC2");
-            grd.addColorStop(1, "#06182E");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            let grdPoints = texture.context.createLinearGradient(0, 0, 0, 95);
-            grdPoints.addColorStop(0, "#3684FF");
-            grdPoints.addColorStop(0.5, "#276AD5");
-            grdPoints.addColorStop(1, "#0B3898");
-            texture.context.fillStyle = grdPoints;
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "50px Franklin_Gothic_Demi_Cond";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.textAlign = "center";
-            texture.context.textBaseline = "middle";
-            texture.context.fillText(bar_1_points, 334, 48);
-
-            //Draw the Answer
-            let textSize = 50;
-            let textSizeString = "px Franklin_Gothic_Demi_Cond";
-            let textFull = "" + textSize + textSizeString;
-            texture.context.font = textFull;
-            //let w = texture.context.measureText(bar_1_answer).width;
-            while (texture.context.measureText(bar_1_answer).width > 290) {
-                textSize = textSize - 5;
-                textFull = "" + textSize + textSizeString;
-                texture.context.font = textFull;
-            }
-            texture.context.fillText(bar_1_answer, 150, 48);
-
-            //Border
-            texture.context.fillRect(0,0,5,95);
-            texture.context.fillRect(0,0,368,5);
-            texture.context.fillRect(363,0,5,95);
-            texture.context.fillRect(0,90,368,5);
-            //Answer and Point split
-            texture.context.fillRect(300,0,2,95);
-
+            texture = createBaseTexture(texture, bar_1_answer, bar_1_points);
             texture.refresh();
 
             if (key1SafeToUse) {
@@ -749,21 +679,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient2Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            //texture.context.fillStyle = "#000000";
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_2_answer, 10, 50);
-            texture.context.fillText(bar_2_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_2_answer, bar_2_points);
             texture.refresh();
 
             if (key2SafeToUse) {
@@ -818,20 +734,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient3Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_3_answer, 10, 50);
-            texture.context.fillText(bar_3_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_3_answer, bar_3_points);
             texture.refresh();
 
             if (key3SafeToUse) {
@@ -885,20 +788,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient4Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_4_answer, 10, 50);
-            texture.context.fillText(bar_4_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_4_answer, bar_4_points);
             texture.refresh();
 
             if (key4SafeToUse) {
@@ -952,21 +842,9 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient5Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_5_answer, 10, 50);
-            texture.context.fillText(bar_5_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_5_answer, bar_5_points);
             texture.refresh();
+
             if (key5SafeToUse) {
                 let tween5FlipAnswer = this.tweens.add({
                     targets: bar_5,
@@ -1019,19 +897,7 @@ export default class Application {
                 texture = this.textures.createCanvas('gradient6Alt', 368, 95);
             }
             let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_6_answer, 10, 50);
-            texture.context.fillText(bar_6_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_6_answer, bar_6_points);
             texture.refresh();
 
             if (key6SafeToUse) {
@@ -1085,20 +951,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient7Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_7_answer, 10, 50);
-            texture.context.fillText(bar_7_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_7_answer, bar_7_points);
             texture.refresh();
 
             if (key7SafeToUse) {
@@ -1152,20 +1005,7 @@ export default class Application {
             else {
                 texture = this.textures.createCanvas('gradient8Alt', 368, 95);
             }
-            let grd = texture.context.createLinearGradient(0, 0, 0, 95);
-            grd.addColorStop(0, "#4c83f7");
-            grd.addColorStop(0.7, "#4c83f7");
-            grd.addColorStop(1, "#1c3ca3");
-            texture.context.fillStyle = grd;
-            texture.context.fillRect(0,0,368, 95);
-            texture.context.fillStyle = "#0000ff";
-            texture.context.fillRect(300, 0, 68, 95);
-            texture.context.font = "30px Franklin_Gothic_Demi_Cond";
-            //texture.context.font = "30px Arial";
-            texture.context.fillStyle = "#ffffff";
-            texture.context.fillText(bar_8_answer, 10, 50);
-            texture.context.fillText(bar_8_points, 305, 50);
-
+            texture = createBaseTexture(texture, bar_8_answer, bar_8_points);
             texture.refresh();
 
             if (key8SafeToUse) {
@@ -1243,6 +1083,153 @@ export default class Application {
             bar_8.setTexture('bar','Number_blank.png');
             bar_8_reset = false;
         }
+
+        if (Xactive) {
+            let Xarray = [];
+            let final_scale = 0.9;
+            if (XactiveCount === 1) {
+                let X = this.add.sprite(Board_Width/2,Board_Height/2, 'X');
+                Xarray.push(X);
+            }
+            else if (XactiveCount === 2) {
+                let X = this.add.sprite(Board_Width/2 - 200,Board_Height/2, 'X');
+                let X2 = this.add.sprite(Board_Width/2 + 200,Board_Height/2, 'X');
+                Xarray.push(X);
+                Xarray.push(X2);
+                final_scale = 0.7;
+            }
+            else if (XactiveCount === 3) {
+                let X = this.add.sprite(Board_Width/2 - 350,Board_Height/2, 'X');
+                let X2 = this.add.sprite(Board_Width/2,Board_Height/2, 'X');
+                let X3 = this.add.sprite(Board_Width/2 + 350,Board_Height/2, 'X');
+                Xarray.push(X);
+                Xarray.push(X2);
+                Xarray.push(X3);
+                final_scale = 0.7;
+            }
+            for (let index = 0; index < Xarray.length; ++index) {
+                Xarray[index].visible = false;
+                Xarray[index].scaleX = 0.1;
+                Xarray[index].scaleY = 0.1;
+            }
+            console.log("Hello Farid 10");
+            //let X = this.add.sprite(400,300, 'X');
+            //X.visible = false;
+            //X.scaleY = 0.1;
+            //X.scaleX = 0.1;
+            this.tweens.add({
+                targets: Xarray,
+                scaleY: final_scale,
+                scaleX: final_scale,
+                duration: 200,
+                ease: 'Bounce',
+                yoyo: false,
+                delay: 0,
+                completeDelay: 200,
+                onStart: function (tween, targets) {
+                    for (let i = 0; i < targets.length; i++) {
+                        targets[i].visible = true;
+                    }
+                },
+                onComplete: function (tween, targets) {
+                    //target.visible = false;
+                    for (let i = 0; i < Xarray.length; i++) {
+                        Xarray[i].visible = false;
+                    }
+                }
+            });
+            this.sound.play('wrongAnswer');
+            Xactive = false;
+        }
+
+        if (left_team_points_update) {
+            //let LeftTeamScoreboard = this.add.sprite(150,300);
+            //let texture = createTeamPointTexture(left_team_points_update);
+            //LeftTeamScoreboard = this.add.sprite(1000, 300, 'tv_bar');
+            let keyLeftTeamSafeToUse = !(this.textures.exists('gradientLeftPoints'));
+            let texture;
+            if (keyLeftTeamSafeToUse) {
+                texture = this.textures.createCanvas('gradientLeftPoints', 200, 150);
+            }
+            else {
+                texture = this.textures.createCanvas('gradientLeftPointsAlt', 200, 150);
+            }
+            texture = createTeamPointTexture(texture, left_team_points);
+            texture.refresh();
+
+            if (keyLeftTeamSafeToUse) {
+                LeftTeamScoreboard.setTexture('gradientLeftPoints');
+                if (!texturesManager.checkKey('gradientLeftPointsAlt')) {
+                    texturesManager.remove('gradientLeftPointsAlt');
+                }
+            }
+            else {
+                LeftTeamScoreboard.setTexture('gradientLeftPointsAlt');
+                if (!texturesManager.checkKey('gradientLeftPoints')) {
+                    texturesManager.remove('gradientLeftPoints');
+                }
+            }
+
+            left_team_points_update = false;
+        }
+
+        if (right_team_points_update) {
+            let keyRightTeamSafeToUse = !(this.textures.exists('gradientRightPoints'));
+            let texture;
+            if (keyRightTeamSafeToUse) {
+                texture = this.textures.createCanvas('gradientRightPoints', 200, 150);
+            }
+            else {
+                texture = this.textures.createCanvas('gradientRightPointsAlt', 200, 150);
+            }
+            texture = createTeamPointTexture(texture, right_team_points);
+            texture.refresh();
+
+            if (keyRightTeamSafeToUse) {
+                RightTeamScoreboard.setTexture('gradientRightPoints');
+                if (!texturesManager.checkKey('gradientRightPointsAlt')) {
+                    texturesManager.remove('gradientRightPointsAlt');
+                }
+            }
+            else {
+                RightTeamScoreboard.setTexture('gradientRightPointsAlt');
+                if (!texturesManager.checkKey('gradientRightPoints')) {
+                    texturesManager.remove('gradientRightPoints');
+                }
+            }
+
+            right_team_points_update = false;
+        }
+
+        if (Current_Points_Update) {
+            let keyCurrentSafeToUse = !(this.textures.exists('gradientCurrentPoints'));
+            let texture;
+            if (keyCurrentSafeToUse) {
+                texture = this.textures.createCanvas('gradientCurrentPoints', 200, 150);
+            }
+            else {
+                texture = this.textures.createCanvas('gradientCurrentPointsAlt', 200, 150);
+            }
+            texture = createTeamPointTexture(texture, Current_Points);
+            texture.refresh();
+
+            if (keyCurrentSafeToUse) {
+                CurrentScoreboard.setTexture('gradientCurrentPoints');
+                if (!texturesManager.checkKey('gradientCurrentPointsAlt')) {
+                    texturesManager.remove('gradientCurrentPointsAlt');
+                }
+            }
+            else {
+                CurrentScoreboard.setTexture('gradientCurrentPointsAlt');
+                if (!texturesManager.checkKey('gradientCurrentPoints')) {
+                    texturesManager.remove('gradientCurrentPoints');
+                }
+            }
+
+            Current_Points_Update = false;
+        }
+
+        //Code used when dealing with 3d objects
         /*
         if (bar_1_activeAnswer) {
             this.tweens.existing(tween1Flip);
@@ -1257,6 +1244,83 @@ export default class Application {
         */
     }
 
+}
+
+function createBaseTexture(textureObj, answer, points) {
+    //Answer Box Gradient
+    let grd = textureObj.context.createLinearGradient(0, 0, 0, 95);
+    grd.addColorStop(0, "#103D9C");
+    grd.addColorStop(0.5, "#1B5CC2");
+    grd.addColorStop(1, "#06182E");
+    textureObj.context.fillStyle = grd;
+    textureObj.context.fillRect(0,0,368, 95);
+    //Point Box Gradient
+    let grdPoints = textureObj.context.createLinearGradient(0, 0, 0, 95);
+    grdPoints.addColorStop(0, "#3684FF");
+    grdPoints.addColorStop(0.5, "#276AD5");
+    grdPoints.addColorStop(1, "#0B3898");
+    textureObj.context.fillStyle = grdPoints;
+    textureObj.context.fillRect(300, 0, 68, 95);
+
+    //Set text and Border properties
+    textureObj.context.fillStyle = "#ffffff";
+    textureObj.context.textAlign = "center";
+    textureObj.context.textBaseline = "middle";
+    //Draw the Points
+    textureObj.context.font = "50px Franklin_Gothic_Demi_Cond";
+    textureObj.context.fillText(points, 332, 48);
+
+    //Draw the Answer
+    let textSize = 50;
+    let textSizeString = "px Franklin_Gothic_Demi_Cond";
+    let textFull = "" + textSize + textSizeString;
+    textureObj.context.font = textFull;
+    while (textureObj.context.measureText(answer).width > 290) {
+        textSize = textSize - 5;
+        textFull = "" + textSize + textSizeString;
+        textureObj.context.font = textFull;
+    }
+    textureObj.context.fillText(answer, 150, 48);
+
+    //Border
+    textureObj.context.fillRect(0,0,5,95);
+    textureObj.context.fillRect(0,0,368,5);
+    textureObj.context.fillRect(363,0,5,95);
+    textureObj.context.fillRect(0,90,368,5);
+    //Answer and Point split
+    textureObj.context.fillRect(300,0,2,95);
+
+    return textureObj;
+}
+
+function createTeamPointTexture(textureObj, points) {
+    //Box size 200 x 150
+    let width = 200;
+    let height = 150;
+
+    //Point Box Gradient
+    let grdPoints = textureObj.context.createLinearGradient(0, 0, 0, height);
+    grdPoints.addColorStop(0, "#3684FF");
+    grdPoints.addColorStop(0.5, "#276AD5");
+    grdPoints.addColorStop(1, "#0B3898");
+    textureObj.context.fillStyle = grdPoints;
+    textureObj.context.fillRect(0, 0, 200, 150);
+
+    //Set text and Border properties
+    textureObj.context.fillStyle = "#ffffff";
+    textureObj.context.textAlign = "center";
+    textureObj.context.textBaseline = "middle";
+    //Draw the Points
+    textureObj.context.font = "80px Franklin_Gothic_Demi_Cond";
+    textureObj.context.fillText(points, width/2, height/2);
+
+    //Border
+    textureObj.context.fillRect(0,0,5,height);
+    textureObj.context.fillRect(0,0,width,5);
+    textureObj.context.fillRect(width-5,0,5,height);
+    textureObj.context.fillRect(0,height-5,width,5);
+
+    return textureObj;
 }
 
 /*
